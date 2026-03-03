@@ -24,7 +24,10 @@ class WizardController(QObject):
             "workers": 4,
             
             # Dataset Statistics
-            "dataset_stats": None
+            "dataset_stats": None,
+            
+            # Training Result
+            "trained_model_path": None
         }
         self._current_step = 0
         self._total_steps = 5
@@ -50,6 +53,10 @@ class WizardController(QObject):
             if not self._data.get("dataset_path"):
                 return False, "请先选择数据文件夹！"
                 
+        elif self._current_step == 3: # Training Step
+            if not self._data.get("trained_model_path"):
+                return False, "请先完成模型训练！"
+
         # Step 2 (Model Params) usually has defaults, so it might be always valid
         # unless we add specific constraints later.
         

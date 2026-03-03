@@ -22,10 +22,10 @@
 ## 📅 Phase 3: 模型训练引擎 (Training Engine)
 - **目标**：实现多进程训练循环，打通 UI 监控。
 - **核心任务**：
-    - [ ] 封装 PyTorch `Dataset` 和 `DataLoader`。
-    - [ ] 实现 `TrainingWorker` (QThread/Multiprocessing)，处理训练循环。
-    - [ ] 对接 UI 实时绘图 (Loss/LR 曲线) 与 进度条 (ETA)。
-    - [ ] 实现“高级设置”与 YAML 配置文件的双向绑定。
+    - [x] 封装 PyTorch `Dataset` 和 `DataLoader` (在 Trainer 中隐式实现)。
+    - [x] 实现 `TrainingWorker` (QThread/Multiprocessing)，处理训练循环。
+    - [x] 对接 UI 实时绘图 (Loss/LR 曲线) 与 进度条 (ETA)。
+    - [x] 实现“高级设置”与 YAML 配置文件的双向绑定。
 
 ## 📅 Phase 4: 推理评估与导出 (Inference, Eval & Export)
 - **目标**：实现模型验证、过漏检分析及工业级导出。

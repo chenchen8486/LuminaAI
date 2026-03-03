@@ -3,6 +3,8 @@ from ui.wizards.wizard_controller import wizard_controller
 from ui.wizards.pages.step1_task_selection import Step1TaskSelection
 from ui.wizards.pages.step2_data_import import Step2DataImport
 from ui.wizards.pages.step3_model_params import Step3ModelParams
+from ui.wizards.pages.step4_training import Step4Training
+from ui.wizards.pages.step5_export import Step5Export
 
 class WizardContainer(QWidget):
     def __init__(self):
@@ -19,10 +21,14 @@ class WizardContainer(QWidget):
         self.step1 = Step1TaskSelection(self.controller)
         self.step2 = Step2DataImport(self.controller)
         self.step3 = Step3ModelParams(self.controller)
+        self.step4 = Step4Training(self.controller)
+        self.step5 = Step5Export(self.controller)
         
         self.stacked_widget.addWidget(self.step1)
         self.stacked_widget.addWidget(self.step2)
         self.stacked_widget.addWidget(self.step3)
+        self.stacked_widget.addWidget(self.step4)
+        self.stacked_widget.addWidget(self.step5)
         
         main_layout.addWidget(self.stacked_widget)
         
@@ -58,4 +64,11 @@ class WizardContainer(QWidget):
 
     def _update_nav_buttons(self, index):
         self.btn_prev.setEnabled(index > 0)
-        self.btn_next.setText("完成" if index == 2 else "下一步")
+        
+        if index == 4: # Last step (Export)
+            self.btn_next.setText("完成")
+        elif index == 3: # Training step
+            # Can only proceed if training is done, logic handled in controller validation
+            self.btn_next.setText("下一步")
+        else:
+            self.btn_next.setText("下一步")
