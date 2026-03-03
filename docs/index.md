@@ -1,4 +1,4 @@
-# VisionForge (EasyVision Studio) 全局开发路线图
+# LuminaAI 全局开发路线图
 
 ## 项目总览
 本项目严格遵循 **渐进式开发 (Sequential Development)** 模式。每个 Phase 完成并经过验证后，方可进入下一 Phase。

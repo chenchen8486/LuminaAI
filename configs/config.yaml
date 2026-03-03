@@ -1,0 +1,19 @@
+# LuminaAI Global Configuration
+
+system:
+  language: "zh_CN"
+  developer_mode: false
+  keep_temp_files: false
+  gpu_id: 0  # Default GPU index, -1 for CPU
+  font_size: 12
+  theme: "dark"
+
+training:
+  default_epochs: 100
+  default_batch_size: 16
+  default_img_size: 640
+  default_worker: 4
+
+paths:
+  temp_dir: "data/03_temp_build"
+  output_dir: "data/05_results"

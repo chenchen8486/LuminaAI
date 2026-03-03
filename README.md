@@ -1,2 +1,2 @@
 # LuminaAI
-VisionForge 深度学习视觉平台
+LuminaAI 深度学习视觉平台
