@@ -1,0 +1,28 @@
+# GUI Framework
+PySide6>=6.5.0
+qdarktheme>=2.1.0
+
+# Deep Learning Base (Placeholder for CPU version, replace with CUDA version for GPU)
+torch>=2.0.0
+torchvision>=0.15.0
+torchaudio>=2.0.0
+
+# Data Processing
+numpy>=1.24.0
+pandas>=2.0.0
+opencv-python-headless>=4.7.0
+pillow>=9.5.0
+albumentations>=1.3.0
+scikit-learn>=1.2.0
+
+# Visualization
+matplotlib>=3.7.0
+
+# Model Export & Inference
+onnx>=1.14.0
+onnxruntime>=1.15.0
+
+# System & Utilities
+pyyaml>=6.0
+tqdm>=4.65.0
+psutil>=5.9.0
