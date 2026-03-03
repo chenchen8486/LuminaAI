@@ -6,18 +6,18 @@
 ## 📅 Phase 1: 基础架构与 UI 框架 (Infrastructure & UI Framework)
 - **目标**：搭建 PySide6 主窗口框架，实现向导模式的基础交互，确立配置管理机制。
 - **核心任务**：
-    - [ ] 建立 `core/infrastructure` (Config, Log, PathUtils)。
-    - [ ] 搭建 PySide6 主界面 (`MainWindow`) 与 导航栏。
-    - [ ] 实现 Step 1 (任务选择) 至 Step 3 (参数设置) 的 UI 流程（无实际后端逻辑）。
-    - [ ] 实现 `WizardController` 用于管理向导状态。
+    - [x] 建立 `core/infrastructure` (Config, Log, PathUtils)。
+    - [x] 搭建 PySide6 主界面 (`MainWindow`) 与 导航栏。
+    - [x] 实现 Step 1 (任务选择) 至 Step 3 (参数设置) 的 UI 流程（无实际后端逻辑）。
+    - [x] 实现 `WizardController` 用于管理向导状态。
 
 ## 📅 Phase 2: 数据管理与标注引擎 (Data Management & Labeling)
 - **目标**：打通数据流，实现图片导入、格式转换与标注功能。
 - **核心任务**：
-    - [ ] 实现 `DataManager`：文件扫描、校验、数据集划分 (Train/Val)。
-    - [ ] 开发/集成 格式转换脚本 (LabelMe <-> VOC <-> YOLO)。
-    - [ ] 集成 LabelMe 或开发简易 Canvas，实现 `Step 2` 的完整逻辑。
-    - [ ] 生成二值化 Mask 功能实现。
+    - [x] 实现 `DataManager`：文件扫描、校验、数据集划分 (Train/Val)。
+    - [x] 开发/集成 格式转换脚本 (LabelMe <-> VOC <-> YOLO)。
+    - [x] 集成 LabelMe 或开发简易 Canvas，实现 `Step 2` 的完整逻辑。
+    - [x] 生成二值化 Mask 功能实现。
 
 ## 📅 Phase 3: 模型训练引擎 (Training Engine)
 - **目标**：实现多进程训练循环，打通 UI 监控。
