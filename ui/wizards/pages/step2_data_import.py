@@ -193,15 +193,18 @@ class Step2DataImport(BaseWizardPage):
         self.tools_group.setVisible(True)
 
     def _launch_labelme(self):
-        # Check if labelme is installed
-        if shutil.which("labelme"):
-            try:
-                path = self.controller.get_data("dataset_path")
-                subprocess.Popen(["labelme", path])
-            except Exception as e:
-                 QMessageBox.warning(self, "错误", f"启动 LabelMe 失败: {e}")
-        else:
-            QMessageBox.warning(self, "提示", "未检测到 'labelme' 命令。请先安装: pip install labelme")
+        # Use sys.executable to ensure we use the labelme installed in the current environment
+        import sys
+        
+        try:
+            path = self.controller.get_data("dataset_path")
+            cmd = [sys.executable, "-m", "labelme"]
+            if path:
+                cmd.append(path)
+                
+            subprocess.Popen(cmd)
+        except Exception as e:
+             QMessageBox.warning(self, "错误", f"启动 LabelMe 失败: {e}\n请尝试手动运行 'pip install labelme'")
 
     def _generate_masks(self):
         path = self.controller.get_data("dataset_path")
