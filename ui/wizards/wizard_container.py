@@ -1,10 +1,11 @@
-from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget, QMessageBox
+from PySide6.QtWidgets import QWidget, QVBoxLayout, QHBoxLayout, QPushButton, QStackedWidget, QMessageBox, QFrame, QLabel
 from ui.wizards.wizard_controller import wizard_controller
 from ui.wizards.pages.step1_task_selection import Step1TaskSelection
 from ui.wizards.pages.step2_data_import import Step2DataImport
 from ui.wizards.pages.step3_model_params import Step3ModelParams
 from ui.wizards.pages.step4_training import Step4Training
 from ui.wizards.pages.step5_export import Step5Export
+from ui.styles import UIStyles
 
 class WizardContainer(QWidget):
     def __init__(self):
@@ -15,9 +16,13 @@ class WizardContainer(QWidget):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(0, 0, 0, 0)
         
         # Stacked Widget for pages
         self.stacked_widget = QStackedWidget()
+        # Remove the global foggy background
+        self.stacked_widget.setStyleSheet("background-color: transparent;")
+        
         self.step1 = Step1TaskSelection(self.controller)
         self.step2 = Step2DataImport(self.controller)
         self.step3 = Step3ModelParams(self.controller)
@@ -32,10 +37,52 @@ class WizardContainer(QWidget):
         
         main_layout.addWidget(self.stacked_widget)
         
-        # Navigation Bar
-        nav_layout = QHBoxLayout()
+        # Navigation Bar (Bottom)
+        nav_container = QFrame()
+        nav_container.setStyleSheet("background-color: transparent;")
+        nav_layout = QHBoxLayout(nav_container)
+        nav_layout.setContentsMargins(40, 20, 40, 20)
+        
         self.btn_prev = QPushButton("上一步")
         self.btn_next = QPushButton("下一步")
+        
+        # Apply styles
+        self.btn_prev.setStyleSheet(f"""
+            QPushButton {{
+                background-color: rgba(30, 30, 30, 0.8);
+                color: {UIStyles.TEXT_GRAY};
+                border: 1px solid #444;
+                border-radius: 6px;
+                font-size: 16px;
+                padding: 12px 30px;
+                min-width: 120px;
+            }}
+            QPushButton:hover {{
+                background-color: #444;
+                color: {UIStyles.TEXT_WHITE};
+            }}
+            QPushButton:disabled {{
+                background-color: transparent;
+                color: #555;
+                border-color: #333;
+            }}
+        """)
+        
+        self.btn_next.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {UIStyles.ACCENT_GREEN};
+                color: {UIStyles.TEXT_BLACK};
+                border: none;
+                border-radius: 6px;
+                font-size: 18px;
+                font-weight: bold;
+                padding: 12px 40px;
+                min-width: 140px;
+            }}
+            QPushButton:hover {{
+                background-color: {UIStyles.ACCENT_HOVER};
+            }}
+        """)
         
         self.btn_prev.clicked.connect(self.controller.prev_step)
         self.btn_next.clicked.connect(self._on_next_clicked)
@@ -44,7 +91,7 @@ class WizardContainer(QWidget):
         nav_layout.addStretch()
         nav_layout.addWidget(self.btn_next)
         
-        main_layout.addLayout(nav_layout)
+        main_layout.addWidget(nav_container)
         
         self._update_nav_buttons(0)
 

@@ -1,9 +1,10 @@
 from PySide6.QtWidgets import (QWidget, QVBoxLayout, QPushButton, QLabel, 
-                               QTextEdit, QProgressBar, QHBoxLayout, QGroupBox, QMessageBox, QSplitter)
+                               QTextEdit, QProgressBar, QHBoxLayout, QGroupBox, QMessageBox, QSplitter, QFrame)
 from PySide6.QtCore import Qt, Slot, QTimer
 from PySide6.QtGui import QPixmap, QImage
 from ui.wizards.base_wizard_page import BaseWizardPage
 from core.training.trainer import TrainingWorker
+from ui.styles import UIStyles
 import os
 
 class Step4Training(BaseWizardPage):
@@ -16,33 +17,68 @@ class Step4Training(BaseWizardPage):
 
     def _setup_ui(self):
         layout = QVBoxLayout(self)
+        layout.setContentsMargins(20, 20, 20, 20)
+        
+        # --- Card Container ---
+        # Since Step 4 is large, we might not want to center a small card.
+        # But we still need a background to read text.
+        # We'll make the whole page a "Card".
+        
+        self.card_frame = QFrame()
+        self.card_frame.setObjectName("CardContainer")
+        self.card_frame.setStyleSheet(UIStyles.CARD_CONTAINER)
+        
+        card_layout = QVBoxLayout(self.card_frame)
+        card_layout.setContentsMargins(20, 20, 20, 20)
         
         # Title
         title = QLabel("Step 4: 模型训练与监控")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 10px;")
-        layout.addWidget(title)
+        title.setStyleSheet(UIStyles.LBL_TITLE)
+        card_layout.addWidget(title)
 
         # Main Splitter (Left: Progress/Chart, Right: Log)
         splitter = QSplitter(Qt.Horizontal)
+        splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: #444;
+                width: 2px;
+            }
+        """)
         
         # Left Panel
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
-        left_layout.setContentsMargins(0, 0, 0, 0)
+        left_layout.setContentsMargins(0, 0, 10, 0)
 
         # Progress Section
         progress_group = QGroupBox("训练进度")
+        progress_group.setStyleSheet(UIStyles.GROUP_BOX)
         progress_layout = QVBoxLayout(progress_group)
         
         self.lbl_epoch = QLabel("Epoch: 0 / 0")
+        self.lbl_epoch.setStyleSheet(UIStyles.LBL_SUBTITLE)
+        
         self.lbl_metrics = QLabel("Loss: - | mAP: -")
-        self.lbl_metrics.setStyleSheet("color: #007acc; font-weight: bold;")
+        self.lbl_metrics.setStyleSheet(f"color: {UIStyles.ACCENT_GREEN}; font-weight: bold; font-size: 14px;")
         
         self.progress_bar = QProgressBar()
         self.progress_bar.setRange(0, 100)
         self.progress_bar.setValue(0)
         self.progress_bar.setTextVisible(True)
+        self.progress_bar.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid #444;
+                border-radius: 5px;
+                text-align: center;
+                color: white;
+                background-color: #222;
+            }}
+            QProgressBar::chunk {{
+                background-color: {UIStyles.ACCENT_GREEN};
+                width: 20px;
+            }}
+        """)
         
         progress_layout.addWidget(self.lbl_epoch)
         progress_layout.addWidget(self.progress_bar)
@@ -51,11 +87,13 @@ class Step4Training(BaseWizardPage):
         
         # Chart Section
         chart_group = QGroupBox("实时指标 (Loss/Accuracy)")
+        chart_group.setStyleSheet(UIStyles.GROUP_BOX)
         chart_layout = QVBoxLayout(chart_group)
+        
         self.lbl_chart = QLabel("等待训练开始...")
         self.lbl_chart.setAlignment(Qt.AlignCenter)
         self.lbl_chart.setMinimumSize(400, 300)
-        self.lbl_chart.setStyleSheet("background-color: #f0f0f0; border: 1px solid #ccc;")
+        self.lbl_chart.setStyleSheet("background-color: rgba(0,0,0,0.3); border: 1px solid #444; color: #888;")
         chart_layout.addWidget(self.lbl_chart)
         left_layout.addWidget(chart_group)
         
@@ -63,34 +101,64 @@ class Step4Training(BaseWizardPage):
 
         # Log Section (Right Panel)
         log_group = QGroupBox("训练日志")
+        log_group.setStyleSheet(UIStyles.GROUP_BOX)
         log_layout = QVBoxLayout(log_group)
         
         self.txt_log = QTextEdit()
         self.txt_log.setReadOnly(True)
-        self.txt_log.setStyleSheet("background-color: #1e1e1e; color: #d4d4d4; font-family: Consolas;")
+        self.txt_log.setStyleSheet(f"background-color: #111; color: {UIStyles.TEXT_GRAY}; font-family: Consolas; border: 1px solid #333;")
         log_layout.addWidget(self.txt_log)
         splitter.addWidget(log_group)
         
         # Set splitter ratio (60% left, 40% right)
         splitter.setStretchFactor(0, 6)
         splitter.setStretchFactor(1, 4)
-        layout.addWidget(splitter)
+        card_layout.addWidget(splitter)
 
         # Control Buttons
         btn_layout = QHBoxLayout()
+        btn_layout.setSpacing(20)
         
         self.btn_start = QPushButton("开始训练")
-        self.btn_start.setStyleSheet("background-color: #28a745; color: white; font-weight: bold; padding: 10px;")
+        self.btn_start.setCursor(Qt.PointingHandCursor)
+        self.btn_start.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {UIStyles.ACCENT_GREEN};
+                color: {UIStyles.TEXT_BLACK};
+                border: none;
+                border-radius: 6px;
+                font-weight: bold;
+                padding: 12px;
+                font-size: 16px;
+            }}
+            QPushButton:hover {{ background-color: {UIStyles.ACCENT_HOVER}; }}
+            QPushButton:disabled {{ background-color: #444; color: #666; }}
+        """)
         self.btn_start.clicked.connect(self._start_training)
         
         self.btn_stop = QPushButton("停止训练")
-        self.btn_stop.setStyleSheet("background-color: #dc3545; color: white; font-weight: bold; padding: 10px;")
+        self.btn_stop.setCursor(Qt.PointingHandCursor)
+        self.btn_stop.setStyleSheet("""
+            QPushButton {
+                background-color: #dc3545; 
+                color: white; 
+                border: none;
+                border-radius: 6px;
+                font-weight: bold; 
+                padding: 12px;
+                font-size: 16px;
+            }
+            QPushButton:hover { background-color: #c82333; }
+            QPushButton:disabled { background-color: #444; color: #666; }
+        """)
         self.btn_stop.clicked.connect(self._stop_training)
         self.btn_stop.setEnabled(False)
         
         btn_layout.addWidget(self.btn_start)
         btn_layout.addWidget(self.btn_stop)
-        layout.addLayout(btn_layout)
+        card_layout.addLayout(btn_layout)
+        
+        layout.addWidget(self.card_frame)
 
     def _start_training(self):
         # Gather config from controller

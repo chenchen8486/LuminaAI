@@ -1,6 +1,7 @@
 from PySide6.QtWidgets import QWidget, QVBoxLayout, QPushButton, QLabel, QHBoxLayout
 from PySide6.QtCore import Qt
 from ui.wizards.base_wizard_page import BaseWizardPage
+from ui.styles import UIStyles
 
 class Step1TaskSelection(BaseWizardPage):
     def __init__(self, controller):
@@ -9,15 +10,17 @@ class Step1TaskSelection(BaseWizardPage):
     def _setup_ui(self):
         layout = QVBoxLayout(self)
         layout.setAlignment(Qt.AlignCenter)
+        layout.setSpacing(40)
         
         # Title
         title = QLabel("Step 1: 选择任务类型")
         title.setAlignment(Qt.AlignCenter)
-        title.setStyleSheet("font-size: 24px; font-weight: bold; margin-bottom: 20px;")
+        title.setStyleSheet(UIStyles.LBL_TITLE)
         layout.addWidget(title)
 
         # Cards Layout
         cards_layout = QHBoxLayout()
+        cards_layout.setSpacing(30)
         
         self.btn_detect = self._create_card("目标检测", "识别物体位置与类别")
         self.btn_segment = self._create_card("图像分割", "像素级抠图")
@@ -36,24 +39,32 @@ class Step1TaskSelection(BaseWizardPage):
 
     def _create_card(self, title, desc):
         btn = QPushButton(f"{title}\n\n{desc}")
-        btn.setFixedSize(200, 250)
-        btn.setStyleSheet("""
-            QPushButton {
-                background-color: #3c3c3c;
-                border: 2px solid #555;
-                border-radius: 10px;
-                font-size: 18px;
-                color: white;
+        btn.setFixedSize(250, 300)
+        btn.setCursor(Qt.PointingHandCursor)
+        
+        # Use styles from UIStyles but customize for this specific card look
+        btn.setStyleSheet(f"""
+            QPushButton {{
+                background-color: rgba(30, 30, 30, 0.9);
+                border: 2px solid #444;
+                border-radius: 12px;
+                font-family: "{UIStyles.FONT_FAMILY}";
+                font-size: 20px;
+                color: {UIStyles.TEXT_WHITE};
                 text-align: center;
-            }
-            QPushButton:hover {
-                background-color: #4a4a4a;
-                border-color: #007acc;
-            }
-            QPushButton:checked {
-                background-color: #007acc;
-                border-color: #009ce0;
-            }
+                padding: 20px;
+            }}
+            QPushButton:hover {{
+                background-color: #333;
+                border-color: {UIStyles.ACCENT_GREEN};
+                color: {UIStyles.ACCENT_GREEN};
+            }}
+            QPushButton:checked {{
+                background-color: rgba(0, 230, 118, 0.1); /* Low opacity green bg */
+                border-color: {UIStyles.ACCENT_GREEN};
+                color: {UIStyles.ACCENT_GREEN};
+                font-weight: bold;
+            }}
         """)
         btn.setCheckable(True)
         return btn

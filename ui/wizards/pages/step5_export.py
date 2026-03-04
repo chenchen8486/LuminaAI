@@ -3,13 +3,14 @@ from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
     QComboBox, QSpinBox, QFileDialog, QProgressBar, QTextEdit,
     QGroupBox, QSplitter, QListWidget, QCheckBox, QDialog, QTableWidget,
-    QTableWidgetItem, QHeaderView
+    QTableWidgetItem, QHeaderView, QFrame
 )
 from PySide6.QtCore import Qt, QThread, Signal
 from ui.wizards.base_wizard_page import BaseWizardPage
 from core.export.model_exporter import ExportWorker
 from core.inference.inference_engine import BatchInferenceEngine
 from core.inference.evaluator import Evaluator, EvaluationReport
+from ui.styles import UIStyles
 
 class EvaluationDialog(QDialog):
     def __init__(self, report: EvaluationReport, parent=None):
@@ -153,56 +154,114 @@ class Step5Export(BaseWizardPage):
 
     def _setup_ui(self):
         main_layout = QVBoxLayout(self)
+        main_layout.setContentsMargins(20, 20, 20, 20)
+        
+        # --- Card Frame ---
+        self.card_frame = QFrame()
+        self.card_frame.setObjectName("CardContainer")
+        self.card_frame.setStyleSheet(UIStyles.CARD_CONTAINER)
+        
+        card_layout = QVBoxLayout(self.card_frame)
+        card_layout.setContentsMargins(20, 20, 20, 20)
         
         # Splitter for Export (Left) and Inference (Right)
         splitter = QSplitter(Qt.Horizontal)
-        main_layout.addWidget(splitter)
+        splitter.setStyleSheet("""
+            QSplitter::handle {
+                background-color: #444;
+                width: 2px;
+            }
+        """)
+        card_layout.addWidget(splitter)
         
         # --- Left Panel: Model Export ---
         left_widget = QWidget()
         left_layout = QVBoxLayout(left_widget)
+        left_layout.setContentsMargins(0, 0, 10, 0)
         
         export_group = QGroupBox("模型导出 (Model Export)")
+        export_group.setStyleSheet(UIStyles.GROUP_BOX)
         export_layout = QVBoxLayout()
         
         # Model Path
         model_layout = QHBoxLayout()
         self.model_path_label = QLabel("未选择模型")
         self.model_path_label.setWordWrap(True)
+        self.model_path_label.setStyleSheet(UIStyles.LBL_SUBTITLE)
+        
         btn_browse_model = QPushButton("选择模型 (.pt)")
+        btn_browse_model.setCursor(Qt.PointingHandCursor)
+        btn_browse_model.setStyleSheet(UIStyles.BTN_SECONDARY)
         btn_browse_model.clicked.connect(self._browse_model)
+        
         model_layout.addWidget(self.model_path_label)
         model_layout.addWidget(btn_browse_model)
         export_layout.addLayout(model_layout)
         
         # Format
         format_layout = QHBoxLayout()
-        format_layout.addWidget(QLabel("导出格式:"))
+        lbl_fmt = QLabel("导出格式:")
+        lbl_fmt.setStyleSheet(f"color: {UIStyles.TEXT_GRAY}")
+        format_layout.addWidget(lbl_fmt)
+        
         self.combo_format = QComboBox()
         self.combo_format.addItems(["onnx", "torchscript", "engine"]) # engine usually requires tensorrt
+        self.combo_format.setStyleSheet("padding: 5px;")
         format_layout.addWidget(self.combo_format)
         
-        format_layout.addWidget(QLabel("Image Size:"))
+        lbl_sz = QLabel("Image Size:")
+        lbl_sz.setStyleSheet(f"color: {UIStyles.TEXT_GRAY}")
+        format_layout.addWidget(lbl_sz)
+        
         self.spin_imgsz = QSpinBox()
         self.spin_imgsz.setRange(32, 1280)
         self.spin_imgsz.setValue(640)
         self.spin_imgsz.setSingleStep(32)
+        self.spin_imgsz.setStyleSheet("padding: 5px;")
         format_layout.addWidget(self.spin_imgsz)
         export_layout.addLayout(format_layout)
         
         # Export Button
         self.btn_export = QPushButton("开始导出 (Start Export)")
+        self.btn_export.setCursor(Qt.PointingHandCursor)
+        self.btn_export.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {UIStyles.ACCENT_GREEN};
+                color: {UIStyles.TEXT_BLACK};
+                border: none;
+                border-radius: 6px;
+                font-weight: bold;
+                padding: 12px;
+                font-size: 16px;
+            }}
+            QPushButton:hover {{ background-color: {UIStyles.ACCENT_HOVER}; }}
+            QPushButton:disabled {{ background-color: #444; color: #666; }}
+        """)
         self.btn_export.clicked.connect(self._start_export)
         export_layout.addWidget(self.btn_export)
         
         # Progress Bar
         self.export_progress = QProgressBar()
         self.export_progress.setVisible(False)
+        self.export_progress.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid #444;
+                border-radius: 5px;
+                text-align: center;
+                color: white;
+                background-color: #222;
+            }}
+            QProgressBar::chunk {{
+                background-color: {UIStyles.ACCENT_GREEN};
+                width: 20px;
+            }}
+        """)
         export_layout.addWidget(self.export_progress)
         
         # Console
         self.export_console = QTextEdit()
         self.export_console.setReadOnly(True)
+        self.export_console.setStyleSheet(f"background-color: #111; color: {UIStyles.TEXT_GRAY}; font-family: Consolas; border: 1px solid #333;")
         export_layout.addWidget(self.export_console)
         
         export_group.setLayout(export_layout)
@@ -211,16 +270,23 @@ class Step5Export(BaseWizardPage):
         # --- Right Panel: Batch Inference ---
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
+        right_layout.setContentsMargins(10, 0, 0, 0)
         
         infer_group = QGroupBox("批量推理与评估 (Inference & Eval)")
+        infer_group.setStyleSheet(UIStyles.GROUP_BOX)
         infer_layout = QVBoxLayout()
         
         # Input Dir
         input_layout = QHBoxLayout()
         self.input_dir_label = QLabel("未选择图片文件夹")
         self.input_dir_label.setWordWrap(True)
+        self.input_dir_label.setStyleSheet(UIStyles.LBL_SUBTITLE)
+        
         btn_browse_input = QPushButton("选择图片")
+        btn_browse_input.setCursor(Qt.PointingHandCursor)
+        btn_browse_input.setStyleSheet(UIStyles.BTN_SECONDARY)
         btn_browse_input.clicked.connect(self._browse_input)
+        
         input_layout.addWidget(self.input_dir_label)
         input_layout.addWidget(btn_browse_input)
         infer_layout.addLayout(input_layout)
@@ -228,10 +294,16 @@ class Step5Export(BaseWizardPage):
         # GT Dir (Optional)
         gt_layout = QHBoxLayout()
         self.chk_eval = QCheckBox("启用评估 (需提供标注)")
+        self.chk_eval.setStyleSheet(f"color: {UIStyles.TEXT_WHITE}")
         self.chk_eval.stateChanged.connect(self._toggle_gt_input)
+        
         self.gt_dir_label = QLabel("未选择标注文件夹")
         self.gt_dir_label.setWordWrap(True)
+        self.gt_dir_label.setStyleSheet(UIStyles.LBL_SUBTITLE)
+        
         self.btn_browse_gt = QPushButton("选择标注")
+        self.btn_browse_gt.setCursor(Qt.PointingHandCursor)
+        self.btn_browse_gt.setStyleSheet(UIStyles.BTN_SECONDARY)
         self.btn_browse_gt.clicked.connect(self._browse_gt)
         self.btn_browse_gt.setEnabled(False)
         
@@ -242,24 +314,56 @@ class Step5Export(BaseWizardPage):
         
         # Device
         device_layout = QHBoxLayout()
-        device_layout.addWidget(QLabel("推理设备:"))
+        lbl_dev = QLabel("推理设备:")
+        lbl_dev.setStyleSheet(f"color: {UIStyles.TEXT_GRAY}")
+        device_layout.addWidget(lbl_dev)
+        
         self.combo_device = QComboBox()
         self.combo_device.addItems(["cpu", "0", "1"]) # 0/1 for GPU
+        self.combo_device.setStyleSheet("padding: 5px;")
         device_layout.addWidget(self.combo_device)
         infer_layout.addLayout(device_layout)
         
         # Run Button
         self.btn_infer = QPushButton("运行推理 (Run Inference)")
+        self.btn_infer.setCursor(Qt.PointingHandCursor)
+        self.btn_infer.setStyleSheet(f"""
+            QPushButton {{
+                background-color: {UIStyles.ACCENT_GREEN};
+                color: {UIStyles.TEXT_BLACK};
+                border: none;
+                border-radius: 6px;
+                font-weight: bold;
+                padding: 12px;
+                font-size: 16px;
+            }}
+            QPushButton:hover {{ background-color: {UIStyles.ACCENT_HOVER}; }}
+            QPushButton:disabled {{ background-color: #444; color: #666; }}
+        """)
         self.btn_infer.clicked.connect(self._start_inference)
         infer_layout.addWidget(self.btn_infer)
         
         # Progress
         self.infer_progress = QProgressBar()
         self.infer_progress.setVisible(False)
+        self.infer_progress.setStyleSheet(f"""
+            QProgressBar {{
+                border: 1px solid #444;
+                border-radius: 5px;
+                text-align: center;
+                color: white;
+                background-color: #222;
+            }}
+            QProgressBar::chunk {{
+                background-color: {UIStyles.ACCENT_GREEN};
+                width: 20px;
+            }}
+        """)
         infer_layout.addWidget(self.infer_progress)
         
         # Console/List
         self.infer_console = QListWidget()
+        self.infer_console.setStyleSheet(f"background-color: #111; color: {UIStyles.TEXT_GRAY}; border: 1px solid #333;")
         infer_layout.addWidget(self.infer_console)
         
         infer_group.setLayout(infer_layout)
@@ -270,6 +374,8 @@ class Step5Export(BaseWizardPage):
         splitter.addWidget(right_widget)
         splitter.setStretchFactor(0, 1)
         splitter.setStretchFactor(1, 1)
+        
+        main_layout.addWidget(self.card_frame)
 
     def _browse_model(self):
         # Default to runs/train if exists
