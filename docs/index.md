@@ -30,10 +30,10 @@
 ## 📅 Phase 4: 推理评估与导出 (Inference, Eval & Export)
 - **目标**：实现模型验证、过漏检分析及工业级导出。
 - **核心任务**：
-    - [ ] 开发批量推理引擎 (`InferenceEngine`)。
+    - [x] 开发批量推理引擎 (`InferenceEngine`)。
     - [ ] 实现过漏检统计逻辑 (FP/FN Calculation)。
-    - [ ] 开发结果可视化界面 (BBox/Mask Overlay)。
-    - [ ] 集成 ONNX 导出功能 (`Step 5`)。
+    - [x] 开发结果可视化界面 (BBox/Mask Overlay)。
+    - [x] 集成 ONNX 导出功能 (`Step 5`)。
 
 ## 📅 Phase 5: 打包与交付 (Distribution)
 - **目标**：生成稳定可用的 `.exe` 安装包。

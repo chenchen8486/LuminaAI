@@ -56,6 +56,12 @@ class WizardContainer(QWidget):
         self._update_nav_buttons(index)
 
     def _on_next_clicked(self):
+        current_index = self.stacked_widget.currentIndex()
+        if current_index == 4: # Last Step
+            QMessageBox.information(self, "完成", "所有步骤已完成！您可以开始新的任务。")
+            self.controller.reset()
+            return
+
         is_valid, error_msg = self.controller.validate_current_step()
         if is_valid:
             self.controller.next_step()
