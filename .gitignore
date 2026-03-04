@@ -63,18 +63,41 @@ cover/
 .trae/*
 !.trae/rules/
 
-# Project Specific
+# Project Specific - Data Isolation
+# 忽略所有用户生成的数据，保留目录结构（如果有 .gitkeep）
 user_workspace/
-data/01_raw/
-data/02_annotations/
-data/03_temp_build/
-data/04_models/
-data/05_results/
-logs/
+data/01_raw/*
+!data/01_raw/.gitkeep
+data/02_annotations/*
+!data/02_annotations/.gitkeep
+data/03_temp_build/*
+!data/03_temp_build/.gitkeep
+data/04_models/*
+!data/04_models/.gitkeep
+data/05_results/*
+!data/05_results/.gitkeep
+logs/*
+!logs/.gitkeep
+runs/
+
+# Ignore large media files or temporary test images in root or other non-resource dirs
+# But KEEP ui/picture/ because those are app resources
+*.jpg
+*.jpeg
+*.png
+*.bmp
+*.mp4
+*.avi
+# Exception for UI resources
+!ui/picture/*.jpg
+!ui/picture/*.png
+!docs/**/*.jpg
+!docs/**/*.png
 
 # PyInstaller
 *.manifest
-*.spec
+# We might want to keep the spec file if it's custom
+# *.spec 
 
 # OS
 .DS_Store
