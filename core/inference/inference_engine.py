@@ -57,6 +57,10 @@ class BatchInferenceEngine:
             self.model = YOLO(self.model_path)
             # Warmup run? Not strictly necessary for batch inference unless time critical.
 
+    def get_class_names(self) -> Dict[int, str]:
+        self.load_model()
+        return self.model.names
+
     def run_inference(self, image_dir: str, extensions: List[str] = ['*.jpg', '*.png', '*.jpeg']) -> List[ImageInferenceResult]:
         """
         Run inference on all images in the directory.

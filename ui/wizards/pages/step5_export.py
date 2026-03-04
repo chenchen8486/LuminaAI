@@ -2,33 +2,117 @@ import os
 from PySide6.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel, QPushButton, 
     QComboBox, QSpinBox, QFileDialog, QProgressBar, QTextEdit,
-    QGroupBox, QSplitter, QListWidget
+    QGroupBox, QSplitter, QListWidget, QCheckBox, QDialog, QTableWidget,
+    QTableWidgetItem, QHeaderView
 )
 from PySide6.QtCore import Qt, QThread, Signal
 from ui.wizards.base_wizard_page import BaseWizardPage
 from core.export.model_exporter import ExportWorker
 from core.inference.inference_engine import BatchInferenceEngine
+from core.inference.evaluator import Evaluator, EvaluationReport
+
+class EvaluationDialog(QDialog):
+    def __init__(self, report: EvaluationReport, parent=None):
+        super().__init__(parent)
+        self.setWindowTitle("评估报告 (Evaluation Report)")
+        self.resize(800, 600)
+        self._setup_ui(report)
+
+    def _setup_ui(self, report):
+        layout = QVBoxLayout(self)
+        
+        # 1. Overall Metrics
+        overall_group = QGroupBox("总体指标 (Overall Metrics)")
+        overall_layout = QHBoxLayout()
+        
+        metrics = [
+            ("mAP/F1", f"{report.overall_metrics.f1:.4f}"),
+            ("Precision", f"{report.overall_metrics.precision:.4f}"),
+            ("Recall", f"{report.overall_metrics.recall:.4f}"),
+            ("True Positives", str(report.overall_metrics.tp)),
+            ("False Positives", str(report.overall_metrics.fp)),
+            ("False Negatives", str(report.overall_metrics.fn))
+        ]
+        
+        for name, value in metrics:
+            lbl = QLabel(f"{name}: <b>{value}</b>")
+            lbl.setTextFormat(Qt.RichText)
+            overall_layout.addWidget(lbl)
+            
+        overall_group.setLayout(overall_layout)
+        layout.addWidget(overall_group)
+        
+        # 2. Class Metrics Table
+        table_group = QGroupBox("类别详情 (Class Metrics)")
+        table_layout = QVBoxLayout()
+        
+        self.table = QTableWidget()
+        self.table.setColumnCount(7)
+        self.table.setHorizontalHeaderLabels(["ID", "Class Name", "Precision", "Recall", "F1", "FP", "FN"])
+        self.table.horizontalHeader().setSectionResizeMode(QHeaderView.Stretch)
+        
+        self.table.setRowCount(len(report.class_metrics))
+        
+        for row, (cls_id, cls_metric) in enumerate(report.class_metrics.items()):
+            self.table.setItem(row, 0, QTableWidgetItem(str(cls_id)))
+            self.table.setItem(row, 1, QTableWidgetItem(cls_metric.class_name))
+            self.table.setItem(row, 2, QTableWidgetItem(f"{cls_metric.metrics.precision:.4f}"))
+            self.table.setItem(row, 3, QTableWidgetItem(f"{cls_metric.metrics.recall:.4f}"))
+            self.table.setItem(row, 4, QTableWidgetItem(f"{cls_metric.metrics.f1:.4f}"))
+            self.table.setItem(row, 5, QTableWidgetItem(str(cls_metric.metrics.fp)))
+            self.table.setItem(row, 6, QTableWidgetItem(str(cls_metric.metrics.fn)))
+            
+        table_layout.addWidget(self.table)
+        table_group.setLayout(table_layout)
+        layout.addWidget(table_group)
+        
+        # 3. FP/FN Lists
+        lists_layout = QHBoxLayout()
+        
+        fp_group = QGroupBox(f"误报图片 ({len(report.fp_images)})")
+        fp_layout = QVBoxLayout()
+        fp_list = QListWidget()
+        fp_list.addItems([os.path.basename(p) for p in report.fp_images])
+        fp_layout.addWidget(fp_list)
+        fp_group.setLayout(fp_layout)
+        
+        fn_group = QGroupBox(f"漏报图片 ({len(report.fn_images)})")
+        fn_layout = QVBoxLayout()
+        fn_list = QListWidget()
+        fn_list.addItems([os.path.basename(p) for p in report.fn_images])
+        fn_layout.addWidget(fn_list)
+        fn_group.setLayout(fn_layout)
+        
+        lists_layout.addWidget(fp_group)
+        lists_layout.addWidget(fn_group)
+        layout.addLayout(lists_layout)
+
 
 class InferenceWorker(QThread):
     """
-    Background worker for batch inference.
+    Background worker for batch inference and optional evaluation.
     """
     log_message = Signal(str)
     progress_update = Signal(int, int) # current, total
     finished = Signal(str) # output_dir
+    evaluation_finished = Signal(object) # EvaluationReport
     error = Signal(str)
 
-    def __init__(self, model_path, input_dir, output_dir, device='cpu'):
+    def __init__(self, model_path, input_dir, output_dir, device='cpu', gt_dir=None):
         super().__init__()
         self.model_path = model_path
         self.input_dir = input_dir
         self.output_dir = output_dir
         self.device = device
+        self.gt_dir = gt_dir
 
     def run(self):
         try:
             self.log_message.emit(f"初始化推理引擎 (Device: {self.device})...")
             engine = BatchInferenceEngine(self.model_path, device=self.device)
+            
+            # Get class names for evaluation
+            class_names = engine.get_class_names()
             
             self.log_message.emit(f"开始扫描图片: {self.input_dir}")
             results = engine.run_inference(self.input_dir)
@@ -49,9 +133,17 @@ class InferenceWorker(QThread):
             self.log_message.emit(f"推理完成！结果已保存至: {self.output_dir}")
             self.finished.emit(self.output_dir)
             
+            # Run Evaluation if GT provided
+            if self.gt_dir and os.path.exists(self.gt_dir):
+                self.log_message.emit(">>> 正在进行评估 (Calculating Metrics)...")
+                evaluator = Evaluator()
+                report = evaluator.evaluate(results, self.gt_dir, class_names)
+                self.evaluation_finished.emit(report)
+                self.log_message.emit("评估完成！请查看报告弹窗。")
+            
         except Exception as e:
             import traceback
-            self.error.emit(f"推理失败: {str(e)}\n{traceback.format_exc()}")
+            self.error.emit(f"推理/评估失败: {str(e)}\n{traceback.format_exc()}")
 
 class Step5Export(BaseWizardPage):
     def __init__(self, controller):
@@ -120,18 +212,33 @@ class Step5Export(BaseWizardPage):
         right_widget = QWidget()
         right_layout = QVBoxLayout(right_widget)
         
-        infer_group = QGroupBox("批量推理 (Batch Inference)")
+        infer_group = QGroupBox("批量推理与评估 (Inference & Eval)")
         infer_layout = QVBoxLayout()
         
         # Input Dir
         input_layout = QHBoxLayout()
         self.input_dir_label = QLabel("未选择图片文件夹")
         self.input_dir_label.setWordWrap(True)
-        btn_browse_input = QPushButton("选择图片文件夹")
+        btn_browse_input = QPushButton("选择图片")
         btn_browse_input.clicked.connect(self._browse_input)
         input_layout.addWidget(self.input_dir_label)
         input_layout.addWidget(btn_browse_input)
         infer_layout.addLayout(input_layout)
+        
+        # GT Dir (Optional)
+        gt_layout = QHBoxLayout()
+        self.chk_eval = QCheckBox("启用评估 (需提供标注)")
+        self.chk_eval.stateChanged.connect(self._toggle_gt_input)
+        self.gt_dir_label = QLabel("未选择标注文件夹")
+        self.gt_dir_label.setWordWrap(True)
+        self.btn_browse_gt = QPushButton("选择标注")
+        self.btn_browse_gt.clicked.connect(self._browse_gt)
+        self.btn_browse_gt.setEnabled(False)
+        
+        gt_layout.addWidget(self.chk_eval)
+        gt_layout.addWidget(self.gt_dir_label)
+        gt_layout.addWidget(self.btn_browse_gt)
+        infer_layout.addLayout(gt_layout)
         
         # Device
         device_layout = QHBoxLayout()
@@ -142,7 +249,7 @@ class Step5Export(BaseWizardPage):
         infer_layout.addLayout(device_layout)
         
         # Run Button
-        self.btn_infer = QPushButton("运行批量推理 (Run Inference)")
+        self.btn_infer = QPushButton("运行推理 (Run Inference)")
         self.btn_infer.clicked.connect(self._start_inference)
         infer_layout.addWidget(self.btn_infer)
         
@@ -180,6 +287,17 @@ class Step5Export(BaseWizardPage):
         if path:
             self.input_dir_label.setText(path)
             self.infer_console.addItem(f"已选择输入文件夹: {path}")
+
+    def _toggle_gt_input(self, state):
+        self.btn_browse_gt.setEnabled(state == Qt.Checked)
+        if state != Qt.Checked:
+            self.gt_dir_label.setText("未选择标注文件夹")
+
+    def _browse_gt(self):
+        path = QFileDialog.getExistingDirectory(self, "选择标注文件夹 (YOLO .txt)", os.getcwd())
+        if path:
+            self.gt_dir_label.setText(path)
+            self.infer_console.addItem(f"已选择标注文件夹: {path}")
 
     def _start_export(self):
         model_path = self.model_path_label.text()
@@ -228,15 +346,24 @@ class Step5Export(BaseWizardPage):
         output_dir = os.path.join(input_dir, "inference_results")
         device = self.combo_device.currentText()
         
+        gt_dir = None
+        if self.chk_eval.isChecked():
+            gt_path = self.gt_dir_label.text()
+            if os.path.exists(gt_path):
+                gt_dir = gt_path
+            else:
+                self.infer_console.addItem("警告: 未选择有效的标注文件夹，将跳过评估。")
+        
         self.btn_infer.setEnabled(False)
         self.infer_progress.setVisible(True)
         self.infer_progress.setValue(0)
         self.infer_console.addItem(">>> 开始批量推理...")
         
-        self.inference_worker = InferenceWorker(model_path, input_dir, output_dir, device)
+        self.inference_worker = InferenceWorker(model_path, input_dir, output_dir, device, gt_dir)
         self.inference_worker.log_message.connect(lambda msg: self.infer_console.addItem(msg))
         self.inference_worker.progress_update.connect(self._update_infer_progress)
         self.inference_worker.finished.connect(self._on_infer_finished)
+        self.inference_worker.evaluation_finished.connect(self._on_evaluation_finished)
         self.inference_worker.error.connect(self._on_infer_error)
         self.inference_worker.start()
 
@@ -248,6 +375,10 @@ class Step5Export(BaseWizardPage):
         self.btn_infer.setEnabled(True)
         self.infer_console.addItem(f"✅ 推理完成！结果保存在: {output_dir}")
         self.infer_console.scrollToBottom()
+
+    def _on_evaluation_finished(self, report):
+        dialog = EvaluationDialog(report, self)
+        dialog.exec()
 
     def _on_infer_error(self, msg):
         self.btn_infer.setEnabled(True)
