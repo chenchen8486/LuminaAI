@@ -1,19 +1,29 @@
-# LuminaAI Global Configuration
-
-system:
-  language: "zh_CN"
+﻿system:
+  language: zh_CN
   developer_mode: false
+  theme: dark
   keep_temp_files: false
-  gpu_id: 0  # Default GPU index, -1 for CPU
+  gpu_id: 0
   font_size: 12
-  theme: "dark"
-
+paths:
+  root: .
+  data_root: data
+  configs_root: configs
+  logs_root: logs
+  raw_data: data/01_raw
+  annotations: data/02_annotations
+  temp_build: data/03_temp_build
+  models_root: data/04_models
+  models_pretrain: data/04_models/pretrain
+  models_export: data/04_models/export
+  results_root: data/05_results
+  results_train: data/05_results/train_runs
+  results_inference: data/05_results/inference
+  temp_dir: data/03_temp_build
+  output_dir: data/05_results
 training:
   default_epochs: 100
   default_batch_size: 16
+  auto_download_weights: true
   default_img_size: 640
   default_worker: 4
-
-paths:
-  temp_dir: "data/03_temp_build"
-  output_dir: "data/05_results"

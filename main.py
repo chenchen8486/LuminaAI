@@ -4,12 +4,17 @@ from PySide6.QtWidgets import QApplication
 from ui.main_window import MainWindow
 from utils.logger import logger
 from core.infrastructure.config_manager import config
+from core.utils.project_initializer import ProjectInitializer
 
 def main():
     # 1. Initialize Logger
     logger.info("Starting LuminaAI application...")
     
-    # 2. Load Config
+    # 2. Run Project Initialization (Create dirs, migrate files)
+    initializer = ProjectInitializer()
+    initializer.execute()
+    
+    # 3. Load Config
     lang = config.get("system.language", "en_US")
     logger.info(f"Loaded configuration. Language: {lang}")
 

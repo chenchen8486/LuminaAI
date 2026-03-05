@@ -33,8 +33,25 @@ class ExportWorker(QThread):
             exported_path = model.export(format=self.format, imgsz=self.imgsz)
             
             if exported_path:
+                # Move exported file to data/04_models/export
+                export_dir = os.path.join(os.getcwd(), "data", "04_models", "export")
+                os.makedirs(export_dir, exist_ok=True)
+                
+                filename = os.path.basename(exported_path)
+                dest_path = os.path.join(export_dir, filename)
+                
+                # Check if file already exists in dest, handle overwrite or rename? 
+                # shutil.move overwrites by default.
+                try:
+                    shutil.move(exported_path, dest_path)
+                    final_path = dest_path
+                    self.progress_update.emit(f"已归档导出模型至: {final_path}")
+                except Exception as e:
+                    self.progress_update.emit(f"警告: 归档失败，文件保留在原处: {exported_path} ({e})")
+                    final_path = exported_path
+
                 # Ensure the path is absolute
-                abs_path = os.path.abspath(exported_path)
+                abs_path = os.path.abspath(final_path)
                 self.progress_update.emit("导出成功！")
                 self.export_finished.emit(abs_path)
             else:

@@ -4,6 +4,7 @@ import time
 import shutil
 from pathlib import Path
 from PySide6.QtCore import QThread, Signal, QObject
+from core.data_management.format_converter import FormatConverter
 
 # Try to import ultralytics, handle if missing
 try:
@@ -60,38 +61,81 @@ class TrainingWorker(QThread):
             }
             
             # Handle Task Specific Suffix
-            weight_file = model_map.get(model_name, "yolov8n.pt")
-            if task_type == "segmentation" and "yolov8" in weight_file:
-                weight_file = weight_file.replace(".pt", "-seg.pt")
-            elif task_type == "classification" and "yolov8" in weight_file:
-                weight_file = weight_file.replace(".pt", "-cls.pt")
-                
+            base_weight_name = model_map.get(model_name, "yolov8n.pt")
+            if task_type == "segmentation" and "yolov8" in base_weight_name:
+                base_weight_name = base_weight_name.replace(".pt", "-seg.pt")
+            elif task_type == "classification" and "yolov8" in base_weight_name:
+                base_weight_name = base_weight_name.replace(".pt", "-cls.pt")
+            
+            # Look for weights in data/04_models/pretrain first, then root
+            pretrain_dir = os.path.join(os.getcwd(), "data", "04_models", "pretrain")
+            os.makedirs(pretrain_dir, exist_ok=True)
+            
+            weight_file = os.path.join(pretrain_dir, base_weight_name)
+            if not os.path.exists(weight_file):
+                # Check if exists in root, move to pretrain
+                root_weight = os.path.join(os.getcwd(), base_weight_name)
+                if os.path.exists(root_weight):
+                    shutil.move(root_weight, weight_file)
+                    self.log_message.emit(f"已将权重移动到模型库: {weight_file}")
+                else:
+                    # If completely missing, let YOLO download.
+                    # We will pass the name, YOLO downloads to CWD, then we move it.
+                    weight_file = base_weight_name 
+
+            if os.path.exists(os.path.join(pretrain_dir, base_weight_name)):
+                 weight_file = os.path.join(pretrain_dir, base_weight_name)
+
             self.log_message.emit(f"加载模型权重: {weight_file}")
             self.model = YOLO(weight_file)
+            
+            # If YOLO downloaded it to root during init, move it to pretrain
+            if weight_file == base_weight_name and os.path.exists(base_weight_name):
+                 try:
+                     shutil.move(base_weight_name, os.path.join(pretrain_dir, base_weight_name))
+                     self.log_message.emit(f"自动归档预训练模型至: {pretrain_dir}")
+                 except Exception as e:
+                     self.log_message.emit(f"警告: 无法归档模型文件: {e}")
 
             # 3. Add Callbacks for UI Update
             self.model.add_callback("on_train_epoch_end", self._on_epoch_end)
             
             # 4. Prepare Dataset Config (YAML)
-            # If dataset_path is a directory, we might need to generate a data.yaml
-            # For Phase 2 we assume standard structure or auto-generated yaml
-            # Here we check if a yaml exists, otherwise we might need to create one.
-            # For simplicity, assume data.yaml exists in dataset_path or passed path is yaml
-            
             data_cfg = dataset_path
             if os.path.isdir(dataset_path):
                 potential_yaml = os.path.join(dataset_path, "data.yaml")
                 if os.path.exists(potential_yaml):
                     data_cfg = potential_yaml
                 else:
-                    # TODO: Auto-generate data.yaml if missing (Phase 2 feature)
-                    self.error.emit(f"错误: 在 {dataset_path} 下未找到 data.yaml 配置文件")
-                    return
+                    # Auto-generate data.yaml and convert dataset
+                    self.log_message.emit(f"未找到 data.yaml，正在尝试自动转换数据集...")
+                    try:
+                        timestamp = int(time.time())
+                        # Build temp path: data/03_temp_build/build_{timestamp}
+                        temp_dir = os.path.join(os.getcwd(), "data", "03_temp_build", f"build_{timestamp}")
+                        os.makedirs(temp_dir, exist_ok=True)
+                        
+                        self.log_message.emit(f"构建临时数据集: {temp_dir}")
+                        # Call FormatConverter to split dataset and generate yaml
+                        yaml_path = FormatConverter.prepare_yolo_dataset(dataset_path, temp_dir)
+                        data_cfg = yaml_path
+                        self.log_message.emit(f"数据集转换成功: {yaml_path}")
+                        
+                    except Exception as e:
+                        import traceback
+                        self.error.emit(f"自动转换数据集失败: {str(e)}\n{traceback.format_exc()}")
+                        return
 
             # 5. Start Training
-            project_dir = os.path.join(os.getcwd(), "runs", "train")
-            name = f"{task_type}_{model_name}_{int(time.time())}"
-            output_dir = os.path.join(project_dir, name)
+            # Change project_dir to data/05_results/train_runs to keep root clean
+            project_dir = os.path.join(os.getcwd(), "data", "05_results", "train_runs")
+            
+            # Allow user to specify task name via config or auto-generate
+            # For now, we stick to auto-gen but meaningful
+            task_name = self.config.get("task_name", f"{task_type}_{model_name}")
+            run_name = f"{task_name}_{int(time.time())}"
+            
+            output_dir = os.path.join(project_dir, run_name)
             
             self.log_message.emit(f"开始训练: Epochs={epochs}, Batch={batch_size}, Device={device}")
             self.log_message.emit(f"输出目录: {output_dir}")
@@ -106,10 +150,10 @@ class TrainingWorker(QThread):
                 imgsz=imgsz,
                 lr0=lr0,
                 device=device,
-                project=project_dir,
-                name=name,
+                project=project_dir, # Root dir for runs
+                name=run_name,       # Subfolder name
                 exist_ok=True,
-                verbose=True # Prints to stdout, captured by callback or stream
+                verbose=True 
             )
 
             self.finished.emit(True, str(results.save_dir))
